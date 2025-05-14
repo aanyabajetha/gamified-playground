@@ -1,0 +1,312 @@
+import { useState } from 'react'
+import './App.css'
+
+// Import components
+import CodeInput from './components/CodeInput'
+import TransformControls from './components/TransformControls'
+import CodeTransformer from './components/CodeTransformer'
+import ScoreBoard from './components/ScoreBoard'
+import Leaderboard from './components/Leaderboard'
+import ModeSelection from './components/ModeSelection'
+import ManualMode from './components/ManualMode'
+import GameLayout from './components/GameLayout'
+import { GameProvider, useGame } from './context/GameContext'
+import { TooltipProvider } from './components/ui/tooltip'
+
+// Import utilities
+import {
+  TRANSFORMERS,
+  applyTransformation,
+  renameVariables,
+  flattenControlFlow,
+  removeDeadCode
+} from './utils/transformers'
+import {
+  calculateScore,
+  calculateReadabilityScore
+} from './utils/scoring'
+
+// Main App component wrapper
+function AppContent() {
+  // Sample code examples
+  const initialCode = `function greeting(name) {
+  return \`Hello, \${name}!\`;
+}
+
+const result = greeting('World');
+console.log(result);`;
+
+  const obfuscatedCode = `
+var a=function(b){var c="Hello, "+b+"!";return c};
+var d=a("World");console.log(d);
+  `.trim();
+
+  // Sample leaderboard data
+  const leaderboardEntries = [
+    { id: 1, name: 'Player 1', score: 120, transformations: 5, date: new Date('2023-10-15'), readabilityScore: 92 },
+    { id: 2, name: 'Player 2', score: 85, transformations: 3, date: new Date('2023-10-16'), readabilityScore: 78 },
+    { id: 3, name: 'Player 3', score: 150, transformations: 7, date: new Date('2023-10-14'), readabilityScore: 85 },
+  ];
+
+  // Get game context
+  const {
+    mode,
+    originalCode, setOriginalCode,
+    transformedCode, setTransformedCode,
+    score, setScore,
+    transformHistory, setTransformHistory
+  } = useGame();
+
+  // State for readability score
+  const [readabilityScore, setReadabilityScore] = useState(0);
+
+  // Handle code input change
+  const handleCodeInputChange = (code) => {
+    setOriginalCode(code);
+    // Reset transformed code when original code changes
+    setTransformedCode('');
+    // Reset readability score
+    setReadabilityScore(0);
+  };
+
+  // Handle applying a transformation
+  const handleApplyTransform = (transformerId, options = {}) => {
+    if (!originalCode) return;
+
+    try {
+      // Apply the transformation
+      const result = applyTransformation(originalCode, transformerId, options);
+      setTransformedCode(result.code);
+
+      // Calculate readability score
+      const newReadabilityScore = calculateReadabilityScore(result.code);
+      setReadabilityScore(newReadabilityScore);
+
+      // Calculate score for this transformation
+      const transformScore = calculateScore(originalCode, result.code, transformerId);
+
+      // Update total score
+      const newScore = score + transformScore;
+      setScore(newScore);
+
+      // Add to history
+      const historyEntry = {
+        transformerId,
+        options,
+        originalCode,
+        transformedCode: result.code,
+        score: transformScore,
+        timestamp: new Date()
+      };
+
+      setTransformHistory(prev => [...prev, historyEntry]);
+    } catch (error) {
+      console.error('Transformation error:', error);
+      // In a real app, you would show an error message to the user
+    }
+  };
+
+  // Handler functions for transform actions
+  const handleRenameVariables = () => {
+    console.log('Renaming variables...');
+    try {
+      // Apply the rename variables transformation
+      const result = renameVariables(originalCode);
+      setTransformedCode(result.code);
+
+      // Calculate readability score
+      const newReadabilityScore = calculateReadabilityScore(result.code);
+      setReadabilityScore(newReadabilityScore);
+
+      // Calculate score for this transformation
+      const transformScore = calculateScore(originalCode, result.code, 'rename-variables');
+
+      // Update total score
+      const newScore = score + transformScore;
+      setScore(newScore);
+
+      // Add to history
+      const historyEntry = {
+        transformerId: 'rename-variables',
+        options: {},
+        originalCode,
+        transformedCode: result.code,
+        score: transformScore,
+        timestamp: new Date()
+      };
+
+      setTransformHistory(prev => [...prev, historyEntry]);
+    } catch (error) {
+      console.error('Rename variables error:', error);
+    }
+  };
+
+  const handleFlattenControlFlow = () => {
+    console.log('Flattening control flow...');
+    try {
+      // Apply the flatten control flow transformation
+      const result = flattenControlFlow(originalCode);
+      setTransformedCode(result.code);
+
+      // Calculate readability score
+      const newReadabilityScore = calculateReadabilityScore(result.code);
+      setReadabilityScore(newReadabilityScore);
+
+      // Calculate score for this transformation
+      const transformScore = calculateScore(originalCode, result.code, 'flatten-control-flow');
+
+      // Update total score
+      const newScore = score + transformScore;
+      setScore(newScore);
+
+      // Add to history
+      const historyEntry = {
+        transformerId: 'flatten-control-flow',
+        options: {},
+        originalCode,
+        transformedCode: result.code,
+        score: transformScore,
+        timestamp: new Date()
+      };
+
+      setTransformHistory(prev => [...prev, historyEntry]);
+    } catch (error) {
+      console.error('Flatten control flow error:', error);
+    }
+  };
+
+  const handleRemoveDeadCode = () => {
+    console.log('Removing dead code...');
+    try {
+      // Apply the remove dead code transformation
+      const result = removeDeadCode(originalCode);
+      setTransformedCode(result.code);
+
+      // Calculate readability score
+      const newReadabilityScore = calculateReadabilityScore(result.code);
+      setReadabilityScore(newReadabilityScore);
+
+      // Calculate score for this transformation
+      const transformScore = calculateScore(originalCode, result.code, 'remove-dead-code');
+
+      // Update total score
+      const newScore = score + transformScore;
+      setScore(newScore);
+
+      // Add to history
+      const historyEntry = {
+        transformerId: 'remove-dead-code',
+        options: {},
+        originalCode,
+        transformedCode: result.code,
+        score: transformScore,
+        timestamp: new Date()
+      };
+
+      setTransformHistory(prev => [...prev, historyEntry]);
+    } catch (error) {
+      console.error('Remove dead code error:', error);
+    }
+  };
+
+  const handleAutoDeobfuscate = () => {
+    console.log('Auto deobfuscating...');
+    try {
+      // Apply multiple transformations in sequence
+      let code = originalCode;
+
+      // Step 1: Rename variables
+      const renameResult = renameVariables(code);
+      code = renameResult.code;
+
+      // Step 2: Flatten control flow
+      const flattenResult = flattenControlFlow(code);
+      code = flattenResult.code;
+
+      // Step 3: Remove dead code
+      const removeResult = removeDeadCode(code);
+      code = removeResult.code;
+
+      // Set the final transformed code
+      setTransformedCode(code);
+
+      // Calculate readability score
+      const newReadabilityScore = calculateReadabilityScore(code);
+      setReadabilityScore(newReadabilityScore);
+
+      // Calculate a combined score
+      const transformScore = 50; // Fixed score for auto-deobfuscate
+
+      // Update total score
+      const newScore = score + transformScore;
+      setScore(newScore);
+
+      // Add to history
+      const historyEntry = {
+        transformerId: 'auto-deobfuscate',
+        options: {},
+        originalCode,
+        transformedCode: code,
+        score: transformScore,
+        timestamp: new Date()
+      };
+
+      setTransformHistory(prev => [...prev, historyEntry]);
+    } catch (error) {
+      console.error('Auto deobfuscate error:', error);
+    }
+  };
+
+  // If no mode is selected, show the mode selection screen
+  if (!mode) {
+    return <ModeSelection />;
+  }
+
+  // Render the appropriate mode component
+  return (
+    <GameLayout>
+      <div className="space-y-8">
+        {/* Render based on selected mode */}
+        {mode === 'manual' ? (
+          // Manual Mode
+          <ManualMode />
+        ) : (
+          // Auto Mode
+          <CodeTransformer
+            availableTransformers={TRANSFORMERS}
+            initialCode={obfuscatedCode}
+            onScoreUpdate={(newScore, historyEntry) => {
+              setScore(newScore);
+              if (historyEntry) {
+                setTransformHistory(prev => [...prev, historyEntry]);
+              }
+            }}
+            onRenameVariables={handleRenameVariables}
+            onFlattenControlFlow={handleFlattenControlFlow}
+            onRemoveDeadCode={handleRemoveDeadCode}
+            onAutoDeobfuscate={handleAutoDeobfuscate}
+          />
+        )}
+
+        {/* Leaderboard */}
+        <div className="bg-white/10 backdrop-blur-sm border-white/20 shadow-xl rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-white">Leaderboard</h2>
+          <Leaderboard entries={leaderboardEntries} />
+        </div>
+      </div>
+    </GameLayout>
+  );
+}
+
+// Main App component with providers
+function App() {
+  return (
+    <TooltipProvider>
+      <GameProvider>
+        <AppContent />
+      </GameProvider>
+    </TooltipProvider>
+  )
+}
+
+export default App
