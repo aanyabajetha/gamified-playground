@@ -213,23 +213,101 @@ function CodeDisplay({ code = '', label = 'Code', placeholder = 'No code to disp
 function CodeTransformer({
   availableTransformers = [],
   initialCode = '',
+  transformedCode: propTransformedCode = '', // Receive transformed code from props
+  readabilityScore: propReadabilityScore = 0, // Receive readability score from props
+  score: propScore = 0, // Receive score from props
+  transformHistory: propTransformHistory = [], // Receive transformation history from props
   onScoreUpdate,
   onRenameVariables,
   onFlattenControlFlow,
   onRemoveDeadCode,
   onAutoDeobfuscate
 }) {
-  const [originalCode, setOriginalCode] = useState(initialCode);
-  const [transformedCode, setTransformedCode] = useState('');
+  const [originalCode, setOriginalCode] = useState(initialCode || '');
+  const [transformedCode, setTransformedCode] = useState(propTransformedCode || '');
   const [selectedTransformer, setSelectedTransformer] = useState(null);
-  const [score, setScore] = useState(0);
-  const [readabilityScore, setReadabilityScore] = useState(0);
-  const [transformHistory, setTransformHistory] = useState([]);
+  const [score, setScore] = useState(propScore || 0);
+  const [readabilityScore, setReadabilityScore] = useState(propReadabilityScore || 0);
+  const [transformHistory, setTransformHistory] = useState(propTransformHistory || []);
 
   // Update original code when initialCode prop changes
   useEffect(() => {
-    setOriginalCode(initialCode);
+    console.log('CodeTransformer initialCode changed:', initialCode);
+    if (initialCode) {
+      setOriginalCode(initialCode);
+    }
   }, [initialCode]);
+
+  // Debug log for originalCode state
+  useEffect(() => {
+    console.log('CodeTransformer originalCode state:', originalCode);
+  }, [originalCode]);
+
+  // Update transformedCode when propTransformedCode changes
+  useEffect(() => {
+    console.log('CodeTransformer propTransformedCode changed:', propTransformedCode);
+    if (propTransformedCode) {
+      setTransformedCode(propTransformedCode);
+    }
+  }, [propTransformedCode]);
+
+  // Update readabilityScore when propReadabilityScore changes
+  useEffect(() => {
+    if (propReadabilityScore) {
+      setReadabilityScore(propReadabilityScore);
+    }
+  }, [propReadabilityScore]);
+
+  // Update score when propScore changes
+  useEffect(() => {
+    if (propScore) {
+      setScore(propScore);
+    }
+  }, [propScore]);
+
+  // Update transformHistory when propTransformHistory changes
+  useEffect(() => {
+    console.log('CodeTransformer propTransformHistory changed:', propTransformHistory);
+    if (propTransformHistory && propTransformHistory.length > 0) {
+      setTransformHistory(propTransformHistory);
+    }
+  }, [propTransformHistory]);
+
+  // Create wrapper functions for the quick action handlers
+  // These will update the local state when the parent handlers are called
+  const handleRenameVariables = () => {
+    if (onRenameVariables) {
+      // First call the parent handler
+      onRenameVariables();
+
+      // We'll rely on the parent component to pass the transformed code, score, and history back
+      // through props in a future update via the useEffect hooks
+
+      // Note: We don't need to manually update the local state here because
+      // the useEffect hooks will update the state when the props change
+    }
+  };
+
+  const handleFlattenControlFlow = () => {
+    if (onFlattenControlFlow) {
+      onFlattenControlFlow();
+      // State will be updated via props and useEffect hooks
+    }
+  };
+
+  const handleRemoveDeadCode = () => {
+    if (onRemoveDeadCode) {
+      onRemoveDeadCode();
+      // State will be updated via props and useEffect hooks
+    }
+  };
+
+  const handleAutoDeobfuscate = () => {
+    if (onAutoDeobfuscate) {
+      onAutoDeobfuscate();
+      // State will be updated via props and useEffect hooks
+    }
+  };
 
   const handleInputChange = (newCode) => {
     setOriginalCode(newCode);
@@ -404,10 +482,10 @@ function CodeTransformer({
                 availableTransformers={availableTransformers}
                 onTransformSelect={handleTransformSelect}
                 onApplyTransform={handleApplyTransform}
-                onRenameVariables={onRenameVariables}
-                onFlattenControlFlow={onFlattenControlFlow}
-                onRemoveDeadCode={onRemoveDeadCode}
-                onAutoDeobfuscate={onAutoDeobfuscate}
+                onRenameVariables={originalCode ? handleRenameVariables : null}
+                onFlattenControlFlow={originalCode ? handleFlattenControlFlow : null}
+                onRemoveDeadCode={originalCode ? handleRemoveDeadCode : null}
+                onAutoDeobfuscate={originalCode ? handleAutoDeobfuscate : null}
               />
             </div>
           </div>

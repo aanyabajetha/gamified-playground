@@ -18,6 +18,9 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
   const [activeTab, setActiveTab] = useState('overview');
   const { mode } = useGame();
 
+  // Debug log for transformHistory
+  console.log('ScoreBoard transformHistory:', transformHistory);
+
   // Format timestamp for display
   const formatTimestamp = (timestamp) => {
     if (!(timestamp instanceof Date)) {
@@ -194,7 +197,7 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
               </div>
               <div>
                 <div className="text-xs text-gray-400">Transformations</div>
-                <div className="text-xl font-semibold">{transformHistory.length}</div>
+                <div className="text-xl font-semibold">{transformHistory ? transformHistory.length : 0}</div>
               </div>
             </div>
             <div className="bg-black/20 rounded-xl p-3 border border-white/10 flex items-center">
@@ -204,7 +207,7 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
               <div>
                 <div className="text-xs text-gray-400">Avg. Points</div>
                 <div className="text-xl font-semibold">
-                  {transformHistory.length > 0
+                  {transformHistory && transformHistory.length > 0
                     ? Math.round(score / transformHistory.length)
                     : 0}
                 </div>
@@ -220,7 +223,7 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
               Transformation History
             </h3>
 
-            {transformHistory.length === 0 ? (
+            {!transformHistory || transformHistory.length === 0 ? (
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-800/50 mb-3">
                   <History className="h-6 w-6 text-gray-400" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
@@ -56,6 +56,16 @@ function TransformControls({
     }
   };
 
+  // Debug function to check if callbacks are defined
+  useEffect(() => {
+    console.log('TransformControls callbacks:', {
+      onRenameVariables: !!onRenameVariables,
+      onFlattenControlFlow: !!onFlattenControlFlow,
+      onRemoveDeadCode: !!onRemoveDeadCode,
+      onAutoDeobfuscate: !!onAutoDeobfuscate
+    });
+  }, [onRenameVariables, onFlattenControlFlow, onRemoveDeadCode, onAutoDeobfuscate]);
+
   // Find the selected transformer object
   const selectedTransformerObj = availableTransformers.find(t => t.id === selectedTransformer);
 
@@ -83,7 +93,12 @@ function TransformControls({
                     <Button
                       variant="outline"
                       className="bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/50 text-white flex items-center justify-center gap-2 h-16"
-                      onClick={onRenameVariables}
+                      onClick={() => {
+                        console.log('Rename Variables clicked, handler exists:', !!onRenameVariables);
+                        if (onRenameVariables) {
+                          onRenameVariables();
+                        }
+                      }}
                       disabled={!onRenameVariables}
                     >
                       <Pencil className="h-5 w-5" />
@@ -102,7 +117,12 @@ function TransformControls({
                     <Button
                       variant="outline"
                       className="bg-cyan-600/20 hover:bg-cyan-600/40 border-cyan-500/50 text-white flex items-center justify-center gap-2 h-16"
-                      onClick={onFlattenControlFlow}
+                      onClick={() => {
+                        console.log('Flatten Control Flow clicked, handler exists:', !!onFlattenControlFlow);
+                        if (onFlattenControlFlow) {
+                          onFlattenControlFlow();
+                        }
+                      }}
                       disabled={!onFlattenControlFlow}
                     >
                       <GitMerge className="h-5 w-5" />
@@ -121,7 +141,12 @@ function TransformControls({
                     <Button
                       variant="outline"
                       className="bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/50 text-white flex items-center justify-center gap-2 h-16"
-                      onClick={onRemoveDeadCode}
+                      onClick={() => {
+                        console.log('Remove Dead Code clicked, handler exists:', !!onRemoveDeadCode);
+                        if (onRemoveDeadCode) {
+                          onRemoveDeadCode();
+                        }
+                      }}
                       disabled={!onRemoveDeadCode}
                     >
                       <Trash2 className="h-5 w-5" />
@@ -140,7 +165,12 @@ function TransformControls({
                     <Button
                       variant="outline"
                       className="bg-cyan-600/20 hover:bg-cyan-600/40 border-cyan-500/50 text-white flex items-center justify-center gap-2 h-16"
-                      onClick={onAutoDeobfuscate}
+                      onClick={() => {
+                        console.log('Auto Deobfuscate clicked, handler exists:', !!onAutoDeobfuscate);
+                        if (onAutoDeobfuscate) {
+                          onAutoDeobfuscate();
+                        }
+                      }}
                       disabled={!onAutoDeobfuscate}
                     >
                       <Wand2 className="h-5 w-5" />

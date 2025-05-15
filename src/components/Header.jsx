@@ -74,31 +74,14 @@ function Header() {
 
             <div className="flex space-x-1 bg-black/20 rounded-full p-1 border border-white/10">
               {/* Home button - goes to first page */}
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full h-8 w-8 hover:bg-white/10"
-                      onClick={() => window.location.reload()}
-                    >
-                      <Home className="h-4 w-4 text-white/80" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    align="center"
-                    sideOffset={10}
-                    avoidCollisions={true}
-                    className="p-3 bg-gray-900/95 backdrop-blur-md border border-gray-800 text-white text-xs"
-                  >
-                    <div className="w-40 text-center whitespace-normal">
-                      Go to Home Page
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full h-8 w-8 hover:bg-white/10"
+                onClick={() => window.location.reload()}
+              >
+                <Home className="h-4 w-4 text-white/80" />
+              </Button>
             </div>
           </div>
         </div>

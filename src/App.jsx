@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
+import { Trophy } from 'lucide-react'
 
 // Import components
 import CodeInput from './components/CodeInput'
@@ -36,10 +37,11 @@ function AppContent() {
 const result = greeting('World');
 console.log(result);`;
 
-  const obfuscatedCode = `
-var a=function(b){var c="Hello, "+b+"!";return c};
-var d=a("World");console.log(d);
-  `.trim();
+  const obfuscatedCode = `var a=function(b){var c="Hello, "+b+"!";return c};
+var d=a("World");console.log(d);`.trim();
+
+  // Debug log for obfuscatedCode
+  console.log('App obfuscatedCode:', obfuscatedCode);
 
   // Sample leaderboard data
   const leaderboardEntries = [
@@ -56,6 +58,14 @@ var d=a("World");console.log(d);
     score, setScore,
     transformHistory, setTransformHistory
   } = useGame();
+
+  // Initialize originalCode with obfuscatedCode if it's empty
+  useEffect(() => {
+    if (mode === 'auto' && !originalCode) {
+      console.log('Initializing originalCode with obfuscatedCode');
+      setOriginalCode(obfuscatedCode);
+    }
+  }, [mode, originalCode, obfuscatedCode, setOriginalCode]);
 
   // State for readability score
   const [readabilityScore, setReadabilityScore] = useState(0);
@@ -108,7 +118,11 @@ var d=a("World");console.log(d);
 
   // Handler functions for transform actions
   const handleRenameVariables = () => {
-    console.log('Renaming variables...');
+    console.log('Renaming variables...', { originalCode });
+    if (!originalCode) {
+      console.error('No original code to transform');
+      return;
+    }
     try {
       // Apply the rename variables transformation
       const result = renameVariables(originalCode);
@@ -142,7 +156,11 @@ var d=a("World");console.log(d);
   };
 
   const handleFlattenControlFlow = () => {
-    console.log('Flattening control flow...');
+    console.log('Flattening control flow...', { originalCode });
+    if (!originalCode) {
+      console.error('No original code to transform');
+      return;
+    }
     try {
       // Apply the flatten control flow transformation
       const result = flattenControlFlow(originalCode);
@@ -176,7 +194,11 @@ var d=a("World");console.log(d);
   };
 
   const handleRemoveDeadCode = () => {
-    console.log('Removing dead code...');
+    console.log('Removing dead code...', { originalCode });
+    if (!originalCode) {
+      console.error('No original code to transform');
+      return;
+    }
     try {
       // Apply the remove dead code transformation
       const result = removeDeadCode(originalCode);
@@ -210,7 +232,11 @@ var d=a("World");console.log(d);
   };
 
   const handleAutoDeobfuscate = () => {
-    console.log('Auto deobfuscating...');
+    console.log('Auto deobfuscating...', { originalCode });
+    if (!originalCode) {
+      console.error('No original code to transform');
+      return;
+    }
     try {
       // Apply multiple transformations in sequence
       let code = originalCode;
@@ -275,6 +301,10 @@ var d=a("World");console.log(d);
           <CodeTransformer
             availableTransformers={TRANSFORMERS}
             initialCode={obfuscatedCode}
+            transformedCode={transformedCode} // Pass the transformed code
+            readabilityScore={readabilityScore} // Pass the readability score
+            score={score} // Pass the current score
+            transformHistory={transformHistory} // Pass the transformation history
             onScoreUpdate={(newScore, historyEntry) => {
               setScore(newScore);
               if (historyEntry) {
@@ -288,10 +318,20 @@ var d=a("World");console.log(d);
           />
         )}
 
-        {/* Leaderboard */}
+        {/* Leaderboard - only shown in manual mode */}
         <div className="bg-white/10 backdrop-blur-sm border-white/20 shadow-xl rounded-xl p-6">
           <h2 className="text-xl font-semibold mb-4 text-white">Leaderboard</h2>
-          <Leaderboard entries={leaderboardEntries} />
+          {mode === 'manual' ? (
+            <Leaderboard entries={leaderboardEntries} />
+          ) : (
+            <div className="py-8 text-center">
+              <div className="inline-block p-3 rounded-full bg-white/5 mb-4">
+                <Trophy className="h-8 w-8 text-gray-500" />
+              </div>
+              <p className="text-gray-400 text-sm">Leaderboard is disabled in Auto Mode</p>
+              <p className="text-gray-500 text-xs mt-1">Switch to Manual Mode to compete for points and appear on the leaderboard</p>
+            </div>
+          )}
         </div>
       </div>
     </GameLayout>
