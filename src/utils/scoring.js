@@ -366,40 +366,88 @@ export function calculateReadabilityScore(code) {
 
 /**
  * Calculate a challenge mode score comparing original and transformed code
+ * Based on the DecipherHub scoring rubric
  *
  * @param {string} originalCode - The original obfuscated code
  * @param {string} transformedCode - The transformed/deobfuscated code
+ * @param {Array} transformHistory - History of transformations applied
+ * @param {boolean} isManualMode - Whether the transformation was done in manual mode
  * @returns {Object} Object containing score and breakdown
  */
-export function getChallengeScore(originalCode, transformedCode) {
-  // Initialize base score and breakdown object
-  let score = 50; // Start at middle point
+export function getChallengeScore(originalCode, transformedCode, transformHistory = [], isManualMode = true) {
+  // Initialize breakdown object based on the scoring rubric
   const breakdown = {
-    tokenCount: 0,
-    variableNameImprovement: 0,
-    evalRemoval: 0,
-    formatting: 0,
+    clarityGain: 0,          // 40 points
+    transformAccuracy: 0,    // 25 points
+    obfuscationReduction: 0, // 15 points
+    efficiency: 0,           // 10 points
+    stepWiseOptimization: 0, // 10 points
+    bonus: 0,                // Bonus points
+    penalty: 0,              // Penalty points
     total: 0
   };
 
-  // 1. Compare token count between input and output
-  const originalTokens = countTokens(originalCode);
-  const transformedTokens = countTokens(transformedCode);
+  // 1. Clarity Gain (40 points)
+  breakdown.clarityGain = calculateClarityGain(originalCode, transformedCode);
 
-  // If token count is reduced (removing unnecessary code) or slightly increased (better naming)
-  const tokenRatio = transformedTokens / originalTokens;
-  if (tokenRatio < 0.8) {
-    // Significant reduction in tokens (good for minified code)
-    breakdown.tokenCount = 15;
-  } else if (tokenRatio <= 1.2) {
-    // Reasonable token count change
-    breakdown.tokenCount = 10;
-  } else if (tokenRatio > 1.5) {
-    // Too many tokens added
-    breakdown.tokenCount = -5;
+  // 2. Transformation Accuracy (25 points)
+  breakdown.transformAccuracy = calculateTransformAccuracy(originalCode, transformedCode);
+
+  // 3. Obfuscation Marker Reduction (15 points)
+  breakdown.obfuscationReduction = calculateObfuscationReduction(originalCode, transformedCode, transformHistory);
+
+  // 4. Manual vs Auto Efficiency (10 points)
+  breakdown.efficiency = calculateEfficiency(originalCode, transformedCode, transformHistory, isManualMode);
+
+  // 5. Step-wise Optimization (10 points)
+  breakdown.stepWiseOptimization = calculateStepWiseOptimization(transformHistory);
+
+  // Calculate bonus and penalty points
+  const bonusPenalty = calculateBonusPenalty(originalCode, transformedCode, transformHistory);
+  breakdown.bonus = bonusPenalty.bonus;
+  breakdown.penalty = bonusPenalty.penalty;
+
+  // Calculate total score
+  const rawScore = breakdown.clarityGain +
+                  breakdown.transformAccuracy +
+                  breakdown.obfuscationReduction +
+                  breakdown.efficiency +
+                  breakdown.stepWiseOptimization +
+                  breakdown.bonus -
+                  breakdown.penalty;
+
+  // Clamp score between 0 and 100
+  breakdown.total = Math.max(0, Math.min(100, Math.round(rawScore)));
+
+  return {
+    score: breakdown.total,
+    breakdown
+  };
+}
+
+/**
+ * Calculate clarity gain score (40 points max)
+ * Measures readability improvements using token entropy reduction,
+ * variable/function name improvements, and structure simplification
+ *
+ * @param {string} originalCode - Original obfuscated code
+ * @param {string} transformedCode - Transformed code
+ * @returns {number} Clarity gain score (0-40)
+ */
+function calculateClarityGain(originalCode, transformedCode) {
+  let score = 0;
+
+  // 1. Token entropy reduction (15 points)
+  const originalEntropy = calculateTokenEntropy(originalCode);
+  const transformedEntropy = calculateTokenEntropy(transformedCode);
+
+  if (originalEntropy > transformedEntropy) {
+    // Lower entropy is better - more predictable code
+    const entropyReduction = originalEntropy - transformedEntropy;
+    score += Math.min(15, Math.round(entropyReduction * 10));
   }
 
-  // 2. Count improvement in variable name length
+  // 2. Variable/function name improvements (15 points)
   const originalVarInfo = analyzeVariableNames(originalCode);
   const transformedVarInfo = analyzeVariableNames(transformedCode);
 
@@ -409,41 +457,374 @@ export function getChallengeScore(originalCode, transformedCode) {
 
   if (transformedAvgLength > originalAvgLength) {
     const improvement = transformedAvgLength - originalAvgLength;
-    breakdown.variableNameImprovement = Math.min(25, Math.round(improvement * 8));
+    score += Math.min(10, Math.round(improvement * 5));
   }
 
-  // 3. Penalize if any eval remains
-  const originalEvalCount = (originalCode.match(/eval\s*\(/g) || []).length;
-  const transformedEvalCount = (transformedCode.match(/eval\s*\(/g) || []).length;
-
-  if (originalEvalCount > 0 && transformedEvalCount === 0) {
-    // All eval calls removed
-    breakdown.evalRemoval = 20;
-  } else if (originalEvalCount > transformedEvalCount) {
-    // Some eval calls removed
-    breakdown.evalRemoval = 10;
-  } else if (transformedEvalCount > 0) {
-    // Eval calls still present
-    breakdown.evalRemoval = -10;
+  // Reward for increasing descriptive names
+  if (transformedVarInfo.descriptiveNames > originalVarInfo.descriptiveNames) {
+    const descriptiveImprovement = transformedVarInfo.descriptiveNames - originalVarInfo.descriptiveNames;
+    score += Math.min(5, descriptiveImprovement);
   }
 
-  // 4. Add bonus if code formatting is applied
-  const formattingScore = assessFormatting(originalCode, transformedCode);
-  breakdown.formatting = formattingScore;
+  // 3. Structure simplification (10 points)
+  // Check for flattened control flow
+  const originalNestingLevel = calculateMaxNestingLevel(originalCode);
+  const transformedNestingLevel = calculateMaxNestingLevel(transformedCode);
 
-  // Calculate total score
-  score += breakdown.tokenCount +
-           breakdown.variableNameImprovement +
-           breakdown.evalRemoval +
-           breakdown.formatting;
+  if (transformedNestingLevel < originalNestingLevel) {
+    const nestingReduction = originalNestingLevel - transformedNestingLevel;
+    score += Math.min(10, nestingReduction * 3);
+  }
 
-  // Clamp score between 0 and 100
-  breakdown.total = Math.max(0, Math.min(100, Math.round(score)));
+  return Math.min(40, score);
+}
 
-  return {
-    score: breakdown.total,
-    breakdown
-  };
+/**
+ * Calculate transformation accuracy score (25 points max)
+ * Ensures logical equivalence is preserved post-transformation
+ *
+ * @param {string} originalCode - Original obfuscated code
+ * @param {string} transformedCode - Transformed code
+ * @returns {number} Transformation accuracy score (0-25)
+ */
+function calculateTransformAccuracy(originalCode, transformedCode) {
+  // This is a simplified approach since we can't actually execute the code
+  // In a real implementation, you might run tests or compare ASTs
+
+  let score = 25; // Start with full points and deduct as needed
+
+  // 1. Check if key structures are preserved (15 points)
+  // Look for function signatures, return statements, etc.
+  const originalFunctions = extractFunctionSignatures(originalCode);
+  const transformedFunctions = extractFunctionSignatures(transformedCode);
+
+  // If original had functions but transformed has none, deduct points
+  if (originalFunctions.length > 0 && transformedFunctions.length === 0) {
+    score -= 15;
+  }
+  // If function count differs significantly, deduct some points
+  else if (Math.abs(originalFunctions.length - transformedFunctions.length) > 1) {
+    score -= 10;
+  }
+
+  // 2. Check for preserved key operations (10 points)
+  // Look for important operators and keywords
+  const keyOperators = ['return', 'new', 'typeof', 'instanceof', 'await', 'yield'];
+
+  for (const operator of keyOperators) {
+    const originalCount = countOccurrences(originalCode, operator);
+    const transformedCount = countOccurrences(transformedCode, operator);
+
+    // If an important operator is missing in the transformed code, deduct points
+    if (originalCount > 0 && transformedCount === 0) {
+      score -= 2;
+    }
+  }
+
+  return Math.max(0, score);
+}
+
+/**
+ * Calculate obfuscation marker reduction score (15 points max)
+ * Awards points for removing obfuscation techniques
+ *
+ * @param {string} originalCode - Original obfuscated code
+ * @param {string} transformedCode - Transformed code
+ * @param {Array} transformHistory - History of transformations
+ * @returns {number} Obfuscation reduction score (0-15)
+ */
+function calculateObfuscationReduction(originalCode, transformedCode, transformHistory) {
+  let score = 0;
+
+  // 1. Check for eval, Function, setTimeout with code strings (8 points)
+  const obfuscationMarkers = [
+    { pattern: /eval\s*\(/g, weight: 3 },
+    { pattern: /new\s+Function\s*\(/g, weight: 3 },
+    { pattern: /setTimeout\s*\(\s*['"`].*?['"`]/g, weight: 2 }
+  ];
+
+  for (const marker of obfuscationMarkers) {
+    const originalCount = (originalCode.match(marker.pattern) || []).length;
+    const transformedCount = (transformedCode.match(marker.pattern) || []).length;
+
+    if (originalCount > 0 && transformedCount === 0) {
+      // All instances removed
+      score += marker.weight;
+    } else if (originalCount > transformedCount) {
+      // Some instances removed
+      score += Math.floor((originalCount - transformedCount) / originalCount * marker.weight);
+    }
+  }
+
+  // 2. Check for encoded strings (hex/unicode) (4 points)
+  const encodedStringPatterns = [
+    { pattern: /\\x[0-9a-f]{2}/gi, weight: 2 }, // hex escape sequences
+    { pattern: /\\u[0-9a-f]{4}/gi, weight: 2 }  // unicode escape sequences
+  ];
+
+  for (const pattern of encodedStringPatterns) {
+    const originalCount = (originalCode.match(pattern.pattern) || []).length;
+    const transformedCount = (transformedCode.match(pattern.pattern) || []).length;
+
+    if (originalCount > 0) {
+      const reductionRatio = (originalCount - transformedCount) / originalCount;
+      score += Math.floor(reductionRatio * pattern.weight);
+    }
+  }
+
+  // 3. Check for unused junk code or dead code paths (3 points)
+  // This is a simplified check - in reality, you'd need more sophisticated analysis
+  const deadCodePatterns = [
+    { pattern: /if\s*\(\s*false\s*\)/g, weight: 1 },
+    { pattern: /if\s*\(\s*0\s*\)/g, weight: 1 },
+    { pattern: /{\s*}/g, weight: 1 } // empty blocks
+  ];
+
+  for (const pattern of deadCodePatterns) {
+    const originalCount = (originalCode.match(pattern.pattern) || []).length;
+    const transformedCount = (transformedCode.match(pattern.pattern) || []).length;
+
+    if (originalCount > transformedCount) {
+      score += Math.min(pattern.weight, originalCount - transformedCount);
+    }
+  }
+
+  // Apply penalty if obfuscation markers persist after multiple steps
+  if (transformHistory.length > 3) {
+    const evalRemains = (transformedCode.match(/eval\s*\(/g) || []).length > 0;
+    const functionRemains = (transformedCode.match(/new\s+Function\s*\(/g) || []).length > 0;
+
+    if (evalRemains || functionRemains) {
+      score = Math.max(0, score - 3); // Penalty for persistent obfuscation
+    }
+  }
+
+  return Math.min(15, score);
+}
+
+/**
+ * Calculate efficiency score (10 points max)
+ * Rewards intelligent edits or effective auto-suggestions
+ *
+ * @param {string} originalCode - Original obfuscated code
+ * @param {string} transformedCode - Transformed code
+ * @param {Array} transformHistory - History of transformations
+ * @param {boolean} isManualMode - Whether in manual mode
+ * @returns {number} Efficiency score (0-10)
+ */
+function calculateEfficiency(originalCode, transformedCode, transformHistory, isManualMode) {
+  let score = 5; // Start with middle score
+
+  // Different scoring based on mode
+  if (isManualMode) {
+    // In manual mode, reward meaningful changes with fewer edits
+    const changeRatio = calculateChangeRatio(originalCode, transformedCode);
+    const stepCount = transformHistory.length;
+
+    if (changeRatio > 0.3 && stepCount <= 3) {
+      // Significant changes in few steps - very efficient
+      score += 5;
+    } else if (changeRatio > 0.2 && stepCount <= 5) {
+      // Good changes in reasonable steps
+      score += 3;
+    } else if (changeRatio > 0.1) {
+      // Some meaningful changes
+      score += 1;
+    } else if (stepCount > 10 && changeRatio < 0.05) {
+      // Many steps with little change - inefficient
+      score -= 3;
+    }
+  } else {
+    // In auto mode, evaluate the quality of auto-transformations
+    // Check if transformations made meaningful improvements
+    const readabilityImprovement = calculateReadabilityScore(transformedCode) -
+                                  calculateReadabilityScore(originalCode);
+
+    if (readabilityImprovement > 30) {
+      score += 5;
+    } else if (readabilityImprovement > 15) {
+      score += 3;
+    } else if (readabilityImprovement < 0) {
+      score -= 3;
+    }
+  }
+
+  return Math.max(0, Math.min(10, score));
+}
+
+/**
+ * Calculate step-wise optimization score (10 points max)
+ * Encourages fewer, efficient steps with meaningful progress
+ *
+ * @param {Array} transformHistory - History of transformations
+ * @returns {number} Step-wise optimization score (0-10)
+ */
+function calculateStepWiseOptimization(transformHistory) {
+  if (!transformHistory || transformHistory.length === 0) {
+    return 5; // Neutral score if no history
+  }
+
+  let score = 10; // Start with full points
+
+  // 1. Check for undo/redo loops or redundant edits
+  let redundantEdits = 0;
+  const transformerCounts = {};
+
+  // Count how many times each transformer was used
+  transformHistory.forEach(entry => {
+    const transformerId = entry.transformerId;
+    transformerCounts[transformerId] = (transformerCounts[transformerId] || 0) + 1;
+  });
+
+  // Penalize excessive use of the same transformer
+  Object.values(transformerCounts).forEach(count => {
+    if (count > 3) {
+      redundantEdits += count - 3;
+    }
+  });
+
+  // Deduct points for redundant edits
+  score -= Math.min(5, redundantEdits);
+
+  // 2. Reward for consistent progress
+  // This would ideally analyze the actual code changes between steps
+  // For simplicity, we'll use the number of steps as a proxy
+  if (transformHistory.length <= 5) {
+    // Few steps is generally good
+    score += 0; // Already at max
+  } else if (transformHistory.length <= 10) {
+    // Moderate number of steps
+    score -= 2;
+  } else {
+    // Too many steps
+    score -= 5;
+  }
+
+  return Math.max(0, score);
+}
+
+/**
+ * Calculate bonus and penalty points
+ *
+ * @param {string} originalCode - Original obfuscated code
+ * @param {string} transformedCode - Transformed code
+ * @param {Array} transformHistory - History of transformations
+ * @returns {Object} Object with bonus and penalty points
+ */
+function calculateBonusPenalty(originalCode, transformedCode, transformHistory) {
+  let bonus = 0;
+  let penalty = 0;
+
+  // Bonus: +10 points → First successful clean deobfuscation in minimal steps
+  if (transformHistory.length <= 5 &&
+      calculateReadabilityScore(transformedCode) > 80 &&
+      !transformedCode.includes('eval')) {
+    bonus += 10;
+  }
+
+  // Bonus: +5 points → AI suggestion accepted and verified as useful
+  // This would need to be tracked elsewhere and passed in
+  // For now, we'll assume any transformation with "auto" in the ID is an AI suggestion
+  const aiSuggestionUsed = transformHistory.some(entry =>
+    entry.transformerId.includes('auto') || entry.transformerId.includes('ai'));
+
+  if (aiSuggestionUsed) {
+    bonus += 5;
+  }
+
+  // Penalty: −5 points → More than 50% of steps undone or reset
+  // This would need more detailed history tracking
+  // For simplicity, we'll skip this for now
+
+  // Penalty: −10 points → Retained obfuscation markers after 5 steps
+  if (transformHistory.length > 5) {
+    const hasEval = transformedCode.includes('eval');
+    const hasFunction = transformedCode.includes('new Function');
+
+    if (hasEval || hasFunction) {
+      penalty += 10;
+    }
+  }
+
+  return { bonus, penalty };
+}
+
+/**
+ * Calculate token entropy to measure code complexity/obfuscation
+ *
+ * @param {string} code - Code to analyze
+ * @returns {number} Token entropy value
+ */
+function calculateTokenEntropy(code) {
+  // Extract tokens
+  const tokens = code.split(/[\s\(\)\{\}\[\]\;\,\.\+\-\*\/\=\!\<\>\&\|\^\%\?\:\~]+/)
+    .filter(token => token.length > 0);
+
+  if (tokens.length === 0) return 0;
+
+  // Count frequency of each token
+  const tokenFreq = {};
+  tokens.forEach(token => {
+    tokenFreq[token] = (tokenFreq[token] || 0) + 1;
+  });
+
+  // Calculate entropy
+  let entropy = 0;
+  const totalTokens = tokens.length;
+
+  Object.values(tokenFreq).forEach(freq => {
+    const probability = freq / totalTokens;
+    entropy -= probability * Math.log2(probability);
+  });
+
+  return entropy;
+}
+
+/**
+ * Extract function signatures from code
+ *
+ * @param {string} code - Code to analyze
+ * @returns {Array} Array of function signatures
+ */
+function extractFunctionSignatures(code) {
+  const functionPatterns = [
+    /function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\([^)]*\)/g,
+    /([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*function\s*\([^)]*\)/g,
+    /([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*function\s*\([^)]*\)/g,
+    /([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*\([^)]*\)\s*=>/g
+  ];
+
+  let signatures = [];
+
+  functionPatterns.forEach(pattern => {
+    const matches = [...code.matchAll(pattern)];
+    signatures = signatures.concat(matches.map(match => match[0]));
+  });
+
+  return signatures;
+}
+
+/**
+ * Calculate the ratio of changes between original and transformed code
+ *
+ * @param {string} originalCode - Original code
+ * @param {string} transformedCode - Transformed code
+ * @returns {number} Change ratio between 0 and 1
+ */
+function calculateChangeRatio(originalCode, transformedCode) {
+  if (!originalCode) return 0;
+
+  // Simple diff approach - count character differences
+  let differences = 0;
+  const maxLength = Math.max(originalCode.length, transformedCode.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    if (originalCode[i] !== transformedCode[i]) {
+      differences++;
+    }
+  }
+
+  return differences / maxLength;
 }
 
 /**

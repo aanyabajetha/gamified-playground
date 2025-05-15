@@ -24,7 +24,8 @@ import {
 } from './utils/transformers'
 import {
   calculateScore,
-  calculateReadabilityScore
+  calculateReadabilityScore,
+  getChallengeScore
 } from './utils/scoring'
 
 // Main App component wrapper
@@ -92,20 +93,32 @@ var d=a("World");console.log(d);`.trim();
       const newReadabilityScore = calculateReadabilityScore(result.code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate score for this transformation
-      const transformScore = calculateScore(originalCode, result.code, transformerId);
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        result.code,
+        transformHistory,
+        true // isManualMode = true for manual mode
+      );
+
+      // Use the legacy scoring system as a fallback
+      const legacyScore = calculateScore(originalCode, result.code, transformerId);
+
+      // Use the challenge score if available, otherwise use the legacy score
+      const transformScore = challengeScore.score || legacyScore;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId,
         options,
         originalCode,
         transformedCode: result.code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 
@@ -132,20 +145,32 @@ var d=a("World");console.log(d);`.trim();
       const newReadabilityScore = calculateReadabilityScore(result.code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate score for this transformation
-      const transformScore = calculateScore(originalCode, result.code, 'rename-variables');
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        result.code,
+        transformHistory,
+        true // isManualMode = true for manual mode
+      );
+
+      // Use the legacy scoring system as a fallback
+      const legacyScore = calculateScore(originalCode, result.code, 'rename-variables');
+
+      // Use the challenge score if available, otherwise use the legacy score
+      const transformScore = challengeScore.score || legacyScore;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId: 'rename-variables',
         options: {},
         originalCode,
         transformedCode: result.code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 
@@ -170,20 +195,32 @@ var d=a("World");console.log(d);`.trim();
       const newReadabilityScore = calculateReadabilityScore(result.code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate score for this transformation
-      const transformScore = calculateScore(originalCode, result.code, 'flatten-control-flow');
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        result.code,
+        transformHistory,
+        true // isManualMode = true for manual mode
+      );
+
+      // Use the legacy scoring system as a fallback
+      const legacyScore = calculateScore(originalCode, result.code, 'flatten-control-flow');
+
+      // Use the challenge score if available, otherwise use the legacy score
+      const transformScore = challengeScore.score || legacyScore;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId: 'flatten-control-flow',
         options: {},
         originalCode,
         transformedCode: result.code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 
@@ -208,20 +245,32 @@ var d=a("World");console.log(d);`.trim();
       const newReadabilityScore = calculateReadabilityScore(result.code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate score for this transformation
-      const transformScore = calculateScore(originalCode, result.code, 'remove-dead-code');
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        result.code,
+        transformHistory,
+        true // isManualMode = true for manual mode
+      );
+
+      // Use the legacy scoring system as a fallback
+      const legacyScore = calculateScore(originalCode, result.code, 'remove-dead-code');
+
+      // Use the challenge score if available, otherwise use the legacy score
+      const transformScore = challengeScore.score || legacyScore;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId: 'remove-dead-code',
         options: {},
         originalCode,
         transformedCode: result.code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 
@@ -260,20 +309,29 @@ var d=a("World");console.log(d);`.trim();
       const newReadabilityScore = calculateReadabilityScore(code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate a combined score
-      const transformScore = 50; // Fixed score for auto-deobfuscate
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        code,
+        transformHistory,
+        false // isManualMode = false for auto mode
+      );
+
+      // Use the challenge score if available, otherwise use a fixed score
+      const transformScore = challengeScore.score || 50;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId: 'auto-deobfuscate',
         options: {},
         originalCode,
         transformedCode: code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 

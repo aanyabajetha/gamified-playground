@@ -3,7 +3,10 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useGame } from '../context/GameContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { Trophy, Zap, History, BarChart, Award, Star, TrendingUp } from 'lucide-react';
+import {
+  Trophy, Zap, History, BarChart, Award, Star, TrendingUp,
+  Brain, CheckCircle, AlertTriangle, Lightbulb, GitBranch, Plus, Minus
+} from 'lucide-react';
 
 /**
  * ScoreBoard component to display current score and transformation history
@@ -68,10 +71,22 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
   const readabilityLabel = getReadabilityLabel(normalizedReadabilityScore);
   const levelBadge = getLevelBadge();
 
+  // Get the latest transformation details if available
+  const getLatestTransformationDetails = () => {
+    if (!transformHistory || transformHistory.length === 0) {
+      return null;
+    }
+
+    const latest = transformHistory[transformHistory.length - 1];
+    return latest.breakdown || null;
+  };
+
+  const breakdown = getLatestTransformationDetails();
+
   return (
     <div className="w-full">
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 bg-black/20 rounded-lg p-1 mb-4">
+        <TabsList className="w-full grid grid-cols-3 bg-black/20 rounded-lg p-1 mb-4">
           <TabsTrigger
             value="overview"
             className="flex items-center justify-center gap-1.5 data-[state=active]:bg-white/10 data-[state=active]:text-white"
@@ -85,6 +100,13 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
           >
             <History className="h-4 w-4" />
             <span>History</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="scoring"
+            className="flex items-center justify-center gap-1.5 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+          >
+            <Brain className="h-4 w-4" />
+            <span>Scoring</span>
           </TabsTrigger>
         </TabsList>
 
@@ -257,6 +279,161 @@ function ScoreBoard({ score = 0, transformHistory = [], readabilityScore = 0 }) 
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="scoring" className="mt-0 space-y-4">
+          <div className="bg-black/20 rounded-xl p-4 border border-white/10">
+            <h3 className="text-md font-medium text-white/90 mb-3 flex items-center">
+              <Brain className="h-4 w-4 mr-2" />
+              Scoring Breakdown
+            </h3>
+
+            {!breakdown ? (
+              <div className="text-center py-8">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-800/50 mb-3">
+                  <Brain className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-400 text-sm">No scoring data available yet.</p>
+                <p className="text-gray-500 text-xs mt-1">Apply transformations to see detailed scoring.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Main scoring categories */}
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Clarity Gain */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-blue-500/20 rounded-full p-1.5 mr-2">
+                          <Lightbulb className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <span className="font-medium text-white">Clarity Gain</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white border-0">
+                        {breakdown.clarityGain} / 40 pts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Measures readability improvements through token entropy reduction, variable naming, and structure simplification.
+                    </p>
+                  </div>
+
+                  {/* Transformation Accuracy */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-green-500/20 rounded-full p-1.5 mr-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                        </div>
+                        <span className="font-medium text-white">Transformation Accuracy</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0">
+                        {breakdown.transformAccuracy} / 25 pts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Evaluates how well the logical equivalence is preserved after transformation.
+                    </p>
+                  </div>
+
+                  {/* Obfuscation Marker Reduction */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-yellow-500/20 rounded-full p-1.5 mr-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                        </div>
+                        <span className="font-medium text-white">Obfuscation Reduction</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-yellow-500 to-amber-600 text-white border-0">
+                        {breakdown.obfuscationReduction} / 15 pts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Rewards removal of eval, Function constructors, encoded strings, and dead code.
+                    </p>
+                  </div>
+
+                  {/* Efficiency */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-purple-500/20 rounded-full p-1.5 mr-2">
+                          <Zap className="h-4 w-4 text-purple-400" />
+                        </div>
+                        <span className="font-medium text-white">Efficiency</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0">
+                        {breakdown.efficiency} / 10 pts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Rewards intelligent manual edits or effective auto-suggestions.
+                    </p>
+                  </div>
+
+                  {/* Step-wise Optimization */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-indigo-500/20 rounded-full p-1.5 mr-2">
+                          <GitBranch className="h-4 w-4 text-indigo-400" />
+                        </div>
+                        <span className="font-medium text-white">Step-wise Optimization</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white border-0">
+                        {breakdown.stepWiseOptimization} / 10 pts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Encourages fewer, efficient steps that yield meaningful progress.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bonus & Penalty Section */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bonus Points */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-green-500/20 rounded-full p-1.5 mr-2">
+                          <Plus className="h-4 w-4 text-green-400" />
+                        </div>
+                        <span className="font-medium text-white">Bonus</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0">
+                        +{breakdown.bonus} pts
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Penalty Points */}
+                  <div className="p-3 bg-black/30 rounded-lg border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-red-500/20 rounded-full p-1.5 mr-2">
+                          <Minus className="h-4 w-4 text-red-400" />
+                        </div>
+                        <span className="font-medium text-white">Penalty</span>
+                      </div>
+                      <Badge className="bg-gradient-to-r from-red-500 to-rose-600 text-white border-0">
+                        -{breakdown.penalty} pts
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Score */}
+                <div className="p-4 bg-gradient-to-r from-blue-900/40 to-cyan-900/40 rounded-lg border border-blue-500/20 flex justify-between items-center">
+                  <span className="font-medium text-white">Total Score</span>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">
+                    {breakdown.total} points
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </TabsContent>

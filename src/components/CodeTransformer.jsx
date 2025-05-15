@@ -3,7 +3,7 @@ import CodeInput from './CodeInput';
 import TransformControls from './TransformControls';
 import ScoreBoard from './ScoreBoard';
 import { applyTransformation } from '../utils/transformers';
-import { calculateScore } from '../utils/scoring';
+import { calculateScore, getChallengeScore, calculateReadabilityScore } from '../utils/scoring';
 
 /**
  * CodeDisplay component for displaying code with syntax highlighting, line numbers, and copy button
@@ -317,64 +317,7 @@ function CodeTransformer({
     setReadabilityScore(0);
   };
 
-  /**
-   * Calculate readability score for code
-   * Higher score means more readable code
-   *
-   * @param {string} code - Code to analyze
-   * @returns {number} Readability score (0-100)
-   */
-  const calculateReadabilityScore = (code) => {
-    if (!code) return 0;
-
-    let score = 0;
-    const lines = code.split('\n');
-
-    // Factor 1: Line length (shorter lines are more readable)
-    const avgLineLength = lines.reduce((sum, line) => sum + line.trim().length, 0) / lines.length;
-    if (avgLineLength < 40) score += 20;
-    else if (avgLineLength < 60) score += 15;
-    else if (avgLineLength < 80) score += 10;
-    else if (avgLineLength < 100) score += 5;
-
-    // Factor 2: Indentation consistency
-    const indentations = lines
-      .filter(line => line.trim().length > 0)
-      .map(line => line.length - line.trimStart().length);
-
-    const uniqueIndentLevels = new Set(indentations).size;
-    const indentConsistency = uniqueIndentLevels > 0 ? Math.min(5, uniqueIndentLevels) : 0;
-    score += (5 - indentConsistency) * 5; // More consistent indentation = higher score
-
-    // Factor 3: Variable naming (longer names are usually more descriptive)
-    const variableMatches = code.match(/\b(const|let|var)\s+(\w+)/g) || [];
-    const variableNames = variableMatches.map(match => match.split(/\s+/)[1]);
-    const avgVarNameLength = variableNames.length > 0
-      ? variableNames.reduce((sum, name) => sum + name.length, 0) / variableNames.length
-      : 0;
-
-    if (avgVarNameLength > 8) score += 20;
-    else if (avgVarNameLength > 5) score += 15;
-    else if (avgVarNameLength > 3) score += 10;
-    else if (avgVarNameLength > 1) score += 5;
-
-    // Factor 4: Comments presence
-    const commentLines = (code.match(/\/\/.*/g) || []).length;
-    const commentRatio = commentLines / lines.length;
-    if (commentRatio > 0.2) score += 20;
-    else if (commentRatio > 0.1) score += 15;
-    else if (commentRatio > 0.05) score += 10;
-    else if (commentRatio > 0) score += 5;
-
-    // Factor 5: Code structure (presence of functions, classes, etc.)
-    if (code.includes('function')) score += 10;
-    if (code.includes('class')) score += 10;
-    if (code.includes('return')) score += 5;
-    if (code.includes('if') || code.includes('else')) score += 5;
-
-    // Ensure score is between 0 and 100
-    return Math.min(100, Math.max(0, score));
-  };
+  // We're now importing calculateReadabilityScore from utils/scoring.js
 
   const handleTransformSelect = (transformerId) => {
     const transformer = availableTransformers.find(t => t.id === transformerId);
@@ -393,20 +336,35 @@ function CodeTransformer({
       const newReadabilityScore = calculateReadabilityScore(result.code);
       setReadabilityScore(newReadabilityScore);
 
-      // Calculate score for this transformation
-      const transformScore = calculateScore(originalCode, result.code, transformerId);
+      // Get the current mode from the parent component (manual or auto)
+      const isManualMode = true; // Default to manual mode if not specified
+
+      // Calculate score using the new challenge scoring system
+      const challengeScore = getChallengeScore(
+        originalCode,
+        result.code,
+        transformHistory,
+        isManualMode
+      );
+
+      // Use the legacy scoring system as a fallback for backward compatibility
+      const legacyScore = calculateScore(originalCode, result.code, transformerId);
+
+      // Use the challenge score if available, otherwise use the legacy score
+      const transformScore = challengeScore.score || legacyScore;
 
       // Update total score
       const newScore = score + transformScore;
       setScore(newScore);
 
-      // Add to history
+      // Add to history with the detailed breakdown
       const historyEntry = {
         transformerId,
         options,
         originalCode,
         transformedCode: result.code,
         score: transformScore,
+        breakdown: challengeScore.breakdown, // Include the detailed score breakdown
         timestamp: new Date()
       };
 
