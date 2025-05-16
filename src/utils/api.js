@@ -4,7 +4,7 @@
 
 /**
  * Validate deobfuscated code against original code using Gemini API
- * 
+ *
  * @param {string} originalCode - The original obfuscated code
  * @param {string} userCode - The user's deobfuscated code
  * @returns {Promise<Object>} - Object containing validation result
@@ -12,7 +12,7 @@
 export async function validateDeobfuscation(originalCode, userCode) {
   try {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    
+
     if (!apiKey) {
       throw new Error('Gemini API key not found. Please check your .env file.');
     }
@@ -46,7 +46,9 @@ Respond with a JSON object with the following structure:
 {
   "isCorrect": true/false,
   "explanation": "Brief explanation of your reasoning",
-  "score": 0-100 (a score based on readability improvements)
+  "score": 0-100 (a score based on readability improvements),
+  "bonus": 0-10 (bonus points for exceptional improvements),
+  "penalty": 0-10 (penalty points for any issues)
 }
 `;
 
@@ -81,10 +83,10 @@ Respond with a JSON object with the following structure:
     }
 
     const data = await response.json();
-    
+
     // Extract the text response
     const textResponse = data.candidates[0]?.content?.parts[0]?.text;
-    
+
     if (!textResponse) {
       throw new Error('No response from Gemini API');
     }
@@ -92,7 +94,7 @@ Respond with a JSON object with the following structure:
     // Parse the JSON response from the text
     // Find JSON object in the response (it might be surrounded by other text)
     const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-    
+
     if (!jsonMatch) {
       // If no JSON found, create a default response
       return {
@@ -101,13 +103,15 @@ Respond with a JSON object with the following structure:
         score: 0
       };
     }
-    
+
     try {
       const result = JSON.parse(jsonMatch[0]);
       return {
         isCorrect: result.isCorrect || false,
         explanation: result.explanation || "No explanation provided",
-        score: result.score || 0
+        score: result.score || 0,
+        bonus: result.bonus || 0,
+        penalty: result.penalty || 0
       };
     } catch (parseError) {
       console.error('Error parsing JSON from API response:', parseError);

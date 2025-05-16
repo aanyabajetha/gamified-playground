@@ -7,37 +7,53 @@ import { Textarea } from './ui/textarea';
 import { validateDeobfuscation } from '../utils/api';
 import { Check, X, Loader2, Code, Pencil, Trophy } from 'lucide-react';
 import CodeInput from './CodeInput';
+import ScoreBoard from './ScoreBoard';
+import { calculateReadabilityScore } from '../utils/scoring';
 
 /**
  * ManualMode component for the manual deobfuscation mode
- * 
+ *
  * @returns {JSX.Element} ManualMode component
  */
 function ManualMode() {
-  const { score, setScore, updateScore } = useGame();
-  
+  const { score, setScore, updateScore, transformHistory } = useGame();
+
   // Sample obfuscated code - in a real app, this would be fetched or generated
   const [obfuscatedCode, setObfuscatedCode] = useState(`
 var a=function(b){var c="Hello, "+b+"!";return c};
 var d=a("World");console.log(d);
   `.trim());
-  
+
   // User's deobfuscated code
   const [userCode, setUserCode] = useState('');
-  
+
+  // Readability score for the user's code
+  const [readabilityScore, setReadabilityScore] = useState(0);
+
   // Validation state
   const [validationResult, setValidationResult] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
-  
+
+  // Update readability score when user code changes
+  useEffect(() => {
+    if (userCode.trim()) {
+      const newReadabilityScore = calculateReadabilityScore(userCode);
+      setReadabilityScore(newReadabilityScore);
+    } else {
+      setReadabilityScore(0);
+    }
+  }, [userCode]);
+
   // Handle user code input change
   const handleUserCodeChange = (code) => {
     setUserCode(code);
+
     // Reset validation when code changes
     if (validationResult) {
       setValidationResult(null);
     }
   };
-  
+
   // Handle validation submission
   const handleSubmitForValidation = async () => {
     if (!userCode.trim()) {
@@ -48,27 +64,38 @@ var d=a("World");console.log(d);
       });
       return;
     }
-    
+
     setIsValidating(true);
-    
+
     try {
       const result = await validateDeobfuscation(obfuscatedCode, userCode);
       setValidationResult(result);
-      
+
       // If correct, update the score
       if (result.isCorrect) {
         const newScore = score + result.score;
-        
-        // Create history entry
+
+        // Create history entry with breakdown
         const historyEntry = {
           transformerId: 'manual-deobfuscation',
           options: {},
           originalCode: obfuscatedCode,
           transformedCode: userCode,
           score: result.score,
+          // Include the detailed score breakdown
+          breakdown: {
+            clarityGain: Math.round(result.score * 0.4), // 40% of score
+            transformAccuracy: Math.round(result.score * 0.25), // 25% of score
+            obfuscationReduction: Math.round(result.score * 0.15), // 15% of score
+            efficiency: Math.round(result.score * 0.1), // 10% of score
+            stepWiseOptimization: Math.round(result.score * 0.1), // 10% of score
+            bonus: result.bonus || 0,
+            penalty: result.penalty || 0,
+            total: result.score
+          },
           timestamp: new Date()
         };
-        
+
         // Update score with history
         updateScore(newScore, historyEntry);
       }
@@ -83,7 +110,7 @@ var d=a("World");console.log(d);
       setIsValidating(false);
     }
   };
-  
+
   // Get a new challenge
   const handleNewChallenge = () => {
     // In a real app, this would fetch a new challenge from an API or database
@@ -94,18 +121,18 @@ var d=a("World");console.log(d);
       `var z=5;var w=10;var q=z+w;console.log("Sum: "+q);`,
       `var f=function(g){return g*g};var h=f(4);console.log("Square: "+h);`
     ];
-    
+
     // Select a random challenge that's different from the current one
     let newChallenge;
     do {
       newChallenge = challenges[Math.floor(Math.random() * challenges.length)];
     } while (newChallenge === obfuscatedCode && challenges.length > 1);
-    
+
     setObfuscatedCode(newChallenge);
     setUserCode('');
     setValidationResult(null);
   };
-  
+
   return (
     <div className="w-full container mx-auto px-4 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -132,8 +159,8 @@ var d=a("World");console.log(d);
               />
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="bg-blue-600/20 hover:bg-blue-600/40 border-blue-500/50 text-white"
                 onClick={handleNewChallenge}
               >
@@ -142,7 +169,7 @@ var d=a("World");console.log(d);
             </CardFooter>
           </Card>
         </div>
-        
+
         {/* User Code Input Card */}
         <div className="w-full">
           <Card className="card-hover-effect bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl overflow-hidden h-full">
@@ -166,8 +193,8 @@ var d=a("World");console.log(d);
               />
             </CardContent>
             <CardFooter className="p-4 pt-0 flex flex-col items-stretch">
-              <Button 
-                variant="glow" 
+              <Button
+                variant="glow"
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-500 mb-4"
                 onClick={handleSubmitForValidation}
                 disabled={isValidating || !userCode.trim()}
@@ -181,11 +208,11 @@ var d=a("World");console.log(d);
                   <>Submit for Evaluation</>
                 )}
               </Button>
-              
+
               {validationResult && (
                 <div className={`p-4 rounded-lg ${
-                  validationResult.isCorrect 
-                    ? 'bg-green-900/30 border border-green-500/50' 
+                  validationResult.isCorrect
+                    ? 'bg-green-900/30 border border-green-500/50'
                     : 'bg-red-900/30 border border-red-500/50'
                 }`}>
                   <div className="flex items-center mb-2">
@@ -200,7 +227,7 @@ var d=a("World");console.log(d);
                         <span>Incorrect</span>
                       </Badge>
                     )}
-                    
+
                     {validationResult.isCorrect && (
                       <Badge className="ml-2 bg-purple-600 hover:bg-purple-700 flex items-center gap-1 px-2 py-1">
                         <Trophy className="h-3.5 w-3.5" />
@@ -212,6 +239,24 @@ var d=a("World");console.log(d);
                 </div>
               )}
             </CardFooter>
+          </Card>
+        </div>
+      </div>
+
+      {/* Performance Dashboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="w-full">
+          <Card className="card-hover-effect bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl overflow-hidden">
+            <CardHeader className="p-4 border-b border-white/10 bg-black/20">
+              <CardTitle className="text-lg font-semibold text-white">Performance Dashboard</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <ScoreBoard
+                score={score}
+                transformHistory={transformHistory}
+                readabilityScore={readabilityScore}
+              />
+            </CardContent>
           </Card>
         </div>
       </div>
